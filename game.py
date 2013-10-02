@@ -20,7 +20,8 @@ GAME_HEIGHT = 7
 class Rock(GameElement):
     IMAGE = "Rock"
     SOLID = True
-    SLIDE = False
+
+class Light_Rock(Rock): 
 
     def next_pos(self, direction):
         if direction == "up": 
@@ -54,7 +55,6 @@ class Character(GameElement):
 class Gem(GameElement):
     IMAGE = "BlueGem"
     SOLID = False
-    SLIDE = False
 
     def interact(self, player): 
         player.inventory.append(self)
@@ -63,7 +63,6 @@ class Gem(GameElement):
 class Key(GameElement):
     IMAGE = "Key"
     SOLID = False
-    SLIDE = False
 
     def interact(self, player):
         player.inventory.append(self)
@@ -72,6 +71,7 @@ class Key(GameElement):
 
 def keyboard_handler(): 
     direction = None
+    moving = True 
 
     if KEYBOARD[key.UP]: 
         direction = "up"
@@ -87,29 +87,87 @@ def keyboard_handler():
         next_x = next_location[0]
         next_y = next_location[1]
 
+        existing_el = GAME_BOARD.get_el(next_x, next_y)
+
+        if existing_el.__class__ is Rock:
+            if existing_el.__class__ is Light_Rock:
+                if is_blocked(existing_el):
+                    moving = "Something in the way!"
+            else: 
+                moving = "Oww!"
+
         if next_x > GAME_WIDTH - 1 or next_y > GAME_HEIGHT - 1: 
-            GAME_BOARD.draw_msg("Can't go there!")
+            moving = "Can't go there!"
 
+        if moving != True: 
+            GAME_BOARD.draw_msg(moving)
         else: 
-            existing_el = GAME_BOARD.get_el(next_x, next_y)
+            if existing_el.__class__ is Light_Rock: 
+                next_location_slide = existing_el.next_pos(direction)
+                next_x_slide = next_location_slide[0]
+                next_y_slide = next_location_slide[1]
+                move_object(next_x_slide, next_y_slide, existing_el)
+            if existing_el != None and existing_el.__class__ is not Rock:
+                existing_el.interact(PLAYER)
+            move_object(next_x, next_y,PLAYER)
 
-            if existing_el:
-                if existing_el.SLIDE: 
-                    next_location_slide = existing_el.next_pos(direction)
-                    next_x_slide = next_location_slide[0]
-                    next_y_slide = next_location_slide[1]
-                    barrier = GAME_BOARD.get_el(next_x_slide, next_y_slide)
-                    if barrier is None: 
-                        GAME_BOARD.del_el(existing_el.x, existing_el.y)
-                        GAME_BOARD.set_el(next_x_slide, next_y_slide, existing_el)
-                    else: 
-                        GAME_BOARD.draw_msg("Something in the way!")
+
+
+        #set moving to true or falso
+
+        
+
+        #else: 
+            #existing_el = GAME_BOARD.get_el(next_x, next_y)
+        
+
+            # if we're going to move
+                # if there is a rock that can slide and has a clear path (exiting_el is a slidable rock that is unblocked) 
+                # if there is an item and we pick it up "interact" (existing_el is not Rock)
+                # if it's clear (existing_el is None)
+                # move
+            # else 
+                # check if there is a rock that can slide and there is something in the way (existing_el is a slideable rock that is blocked)
+                # check there is a rock that can't slide (existing el is an unslideable rock)
+                # check or if we're going to walk off the game board  (next x or next y is off the board)
+                # nested if's w/ messages 
+
+            """
+            if existing_el.__class__ is Light_Rock:
+                next_location_slide = existing_el.next_pos(direction)
+                next_x_slide = next_location_slide[0]
+                next_y_slide = next_location_slide[1]
+                barrier = GAME_BOARD.get_el(next_x_slide, next_y_slide)
+                if barrier is None: 
+                    move_object(next_x_slide, next_y_slide, existing_el)
+                    move_object(next_x, next_y,PLAYER)
                 else: 
-                    existing_el.interact(PLAYER)
+                    GAME_BOARD.draw_msg("Something in the way!") 
+            else: 
+                    GAME_BOARD.draw_msg("Oww!")
 
-            if existing_el is None or not existing_el.SOLID: 
-                GAME_BOARD.del_el(PLAYER.x, PLAYER.y)
-                GAME_BOARD.set_el(next_x, next_y, PLAYER)
+            elif existing_el: 
+                #pick up an item
+                existing_el.interact(PLAYER)
+                move_object(next_x, next_y,PLAYER)
+            else: 
+                #or just move
+                move_object(next_x, next_y,PLAYER)
+                """
+
+def is_blocked(obj): 
+    next_location = obj.next_pos(direction)
+    next_x = next_location[0]
+    next_y = next_location[1]
+    barrier = GAME_BOARD.get_el(next_x, next_y)
+    if barrier is None:
+        return False
+    else: 
+        return True
+
+def move_object(to_x, to_y, obj): 
+    GAME_BOARD.del_el(obj.x, obj.y)
+    GAME_BOARD.set_el(to_x, to_y, obj)
 
 def initialize():
     """Put game initialization code here"""
@@ -118,7 +176,6 @@ def initialize():
     	(2, 1),
     	(1, 2),
     	(3, 2), 
-    	(2, 3)
     ]
 
     rocks = []
@@ -129,8 +186,9 @@ def initialize():
     	GAME_BOARD.set_el(pos[0], pos[1], rock)
     	rocks.append(rock)
 
-    rocks[-1].SLIDE = True
-    rocks[-1].SOLID = False
+    light_rock = Light_Rock()
+    GAME_BOARD.register(light_rock)
+    GAME_BOARD.set_el(2, 3, light_rock)
 
     global PLAYER
     PLAYER = Character()
